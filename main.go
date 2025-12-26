@@ -18,7 +18,8 @@ func init() {
 		fmt.Fprintf(os.Stderr, "\033[1;30;41minvalid arg\033[0m\n    \033[1;31mno channel provided\033[0m\n")
 		os.Exit(1)
 	};args = args[1:]
-	
+
+	/* TODO: config file */
 	chanName = args[0]
 }
 
