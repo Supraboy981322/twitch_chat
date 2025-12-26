@@ -3,24 +3,64 @@ package main
 import (
 	"os"
 	"fmt"
+	"errors"
 	"strconv"
+	"path/filepath"
+	"github.com/Supraboy981322/gomn"
 	"github.com/gempir/go-twitch-irc/v4"
 )
 
 var (
-	args = os.Args
 	chanName string
+	config gomn.Map
 	defs = map[string]string{}
 )
 
 func init() {
-	if len(args) <= 1 {
-		fmt.Fprintf(os.Stderr, "\033[1;30;41minvalid arg\033[0m\n    \033[1;31mno channel provided\033[0m\n")
+	var ok bool
+	var err error
+	
+	var confDir string
+	if homeDir, err := os.UserHomeDir(); err != nil {
+		fmt.Fprintf(os.Stderr, "\033[1;30;41mfailed to get home dir"+
+						"\033[0m\n    \033[1;31m"+err.Error()+" \033[0m\n")
 		os.Exit(1)
-	};args = args[1:]
+	} else {
+		confDirPath := []string{
+					homeDir, ".config", "Supraboy981322", "twitch_chat"}
+		for _, d := range confDirPath {
+			confDir = filepath.Join(confDir, d)
+		};if err := os.MkdirAll(confDir, 744); err != nil {
+			fmt.Fprintf(os.Stderr, "\033[1;30;41mfailed to ensure conf path"+
+							"\033[0m\n    \033[1;31m"+err.Error()+" \033[0m\n")
+			os.Exit(1)
+		}
+	}
 
-	/* TODO: config file */
-	chanName = args[0]
+	confPath := filepath.Join(confDir, "config.gomn")
+	if _, err = os.Stat(confPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "\033[1;30;41mno config\033[0m\n"+
+						"\033[1;31mPlease create a config at: "+confPath+"\033[0m\n")
+			os.Exit(1)
+		} else {
+			fmt.Fprintf(os.Stderr, "\033[1;30;41mcan't stat config\033[0m\n"+
+						"\033[1;31m"+err.Error()+"\033[0m\n")
+			os.Exit(1)
+		}
+	}
+
+	if config, err = gomn.ParseFile(confPath); err != nil {
+		fmt.Fprintf(os.Stderr, "\033[1;30;41mfailed to parse config\033[0m\n"+
+					"\033[1;31m"+err.Error()+"\033[0m\n")
+		os.Exit(1)
+	}
+
+	if chanName, ok = config["channel name"].(string); !ok {
+		fmt.Fprintf(os.Stderr, "\033[1;30;41mfailed to parse config\033[0m\n"+
+					"\033[1;31mchannel name not a string\033[0m\n")
+		os.Exit(1)
+	}
 }
 
 func main() {
