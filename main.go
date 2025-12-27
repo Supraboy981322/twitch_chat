@@ -65,9 +65,7 @@ func init() {
 
 func main() {
 	cli := twitch.NewAnonymousClient()
-	cli.OnPrivateMessage(func(msg twitch.PrivateMessage) {
-		printMsg(msg)
-	})
+	cli.OnPrivateMessage(printMsg)
 	cli.Join(chanName)
 
 	err := cli.Connect()

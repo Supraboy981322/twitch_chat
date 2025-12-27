@@ -1,4 +1,4 @@
-module twitch_chat
+module github.com/Supraboy981322/twitch_chat
 
 go 1.25.4
 
