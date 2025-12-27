@@ -20,6 +20,10 @@ func init() {
 	var ok bool
 	var err error
 	
+	if len(os.Args) > 1 {
+		chanName = os.Args[1]
+		return
+	}
 	var confDir string
 	if homeDir, err := os.UserHomeDir(); err != nil {
 		fmt.Fprintf(os.Stderr, "\033[1;30;41mfailed to get home dir"+
@@ -64,6 +68,7 @@ func init() {
 }
 
 func main() {
+	fmt.Print("\033[H\033[2J")
 	cli := twitch.NewAnonymousClient()
 	cli.OnPrivateMessage(printMsg)
 	cli.Join(chanName)
