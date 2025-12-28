@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"strconv"
 )
 
 type (
@@ -10,6 +11,7 @@ type (
 		Typ string
 		Mem string
 		Reset func()
+		Cancel func()
 	}
 	StrPar struct {
 		Pos int
@@ -43,6 +45,9 @@ func parser(in string) string {
 			p.Parser.Mem = ""
 			p.Parser.Do = false
 			p.Parser.Typ = ""
+	};p.Parser.Cancel = func(){
+		p.Parser.Reset()
+		p.Len = 0
 	}
 	return p.next()
 }
@@ -55,6 +60,7 @@ func (p *StrPar) next() string {
 	if p.Parser.Do {
 		p.eval()
 		p.Pos++
+		if p.eof() { return p.Out }
 		return p.next()
 	}
 
@@ -65,6 +71,9 @@ func (p *StrPar) next() string {
 	 case "@":
 		p.Parser.Do = true
 		p.Parser.Typ = "at"
+	 case ".":
+		p.Out += p.Cur
+		p.checkLink()
    default:
 		p.Out += p.Cur
 	}
@@ -95,7 +104,7 @@ func (p *StrPar) eval() {
 			p.Out += "[cringe removed]"
 			p.eat()
 			p.Parser.Reset()
-		} else { print("not cring") }
+		}
    case " ":
 		if p.Parser.Typ == "at" {
 			p.Out += "\033[1;30;44m@"+p.Parser.Mem+"\033[0m "
@@ -119,4 +128,27 @@ func (p *StrPar) eval() {
 func (p *StrPar) eat() {
 	if p.eof() { return }
 	p.Pos++ 
+}
+
+func (p *StrPar) checkLink() {
+	restR := strings.Join(p.In[p.Pos+1:], "")
+	restS := strings.FieldsFunc(restR, func(r rune) bool {
+		switch r {
+		 case ' ', '\n': return true
+		 default: return false
+		}
+	})
+	var ext string
+	if len(restS) > 0 {
+		ext = restS[0]
+	} else { return }
+	
+	if ext == "" { return }
+	
+	if isLink, onLine := chkTLD(ext); isLink {
+		p.Out = "\033[3;5;31m[CHAT NOT DISPLAYED "+
+				"(detected TLD from line "+strconv.Itoa(onLine)+" of "+
+				"the offical IANA tld list)]\033[0m"
+		p.Parser.Cancel()
+	}
 }

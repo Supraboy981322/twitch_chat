@@ -1,10 +1,12 @@
 package main
 
 import (
+	"io"
 	"os"
 	"fmt"
 	"errors"
 	"strconv"
+	"net/http"
 	"path/filepath"
 	"github.com/Supraboy981322/gomn"
 	"github.com/gempir/go-twitch-irc/v4"
@@ -14,22 +16,29 @@ var (
 	chanName string
 	config gomn.Map
 	defs = map[string]string{}
+	ianaTldList string
 )
 
 func init() {
 	var ok bool
 	var err error
 	
+	fmt.Println("initializing...")
+
+	fmt.Println("checking args")
 	if len(os.Args) > 1 {
 		chanName = os.Args[1]
 		return
 	}
+
 	var confDir string
+	fmt.Println("getting home dir")
 	if homeDir, err := os.UserHomeDir(); err != nil {
 		fmt.Fprintf(os.Stderr, "\033[1;30;41mfailed to get home dir"+
 						"\033[0m\n    \033[1;31m"+err.Error()+" \033[0m\n")
 		os.Exit(1)
 	} else {
+		fmt.Println("ensuring config dir exists")
 		confDirPath := []string{
 					homeDir, ".config", "Supraboy981322", "twitch_chat"}
 		for _, d := range confDirPath {
@@ -41,6 +50,7 @@ func init() {
 		}
 	}
 
+	fmt.Println("ensuring config exists")
 	confPath := filepath.Join(confDir, "config.gomn")
 	if _, err = os.Stat(confPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -54,17 +64,42 @@ func init() {
 		}
 	}
 
+	fmt.Println("parsing config")
 	if config, err = gomn.ParseFile(confPath); err != nil {
 		fmt.Fprintf(os.Stderr, "\033[1;30;41mfailed to parse config\033[0m\n"+
 					"\033[1;31m"+err.Error()+"\033[0m\n")
 		os.Exit(1)
 	}
 
+	fmt.Println("reading config")
 	if chanName, ok = config["channel name"].(string); !ok {
 		fmt.Fprintf(os.Stderr, "\033[1;30;41mfailed to parse config\033[0m\n"+
 					"\033[1;31mchannel name not a string\033[0m\n")
 		os.Exit(1)
 	}
+
+	ianaTldList = func() string {
+		fmt.Println("fetching official IANA TLD list")
+
+		url := "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
+		resp, err := http.Get(url)
+		if err != nil {
+			fmt.Println("\033[1;31mfailed to get tld list "+
+						"(chat may contain link): %v\033[0m", err)
+			return ""
+		};defer resp.Body.Close()
+
+		bod, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("failed to read tld list "+
+						"(chat may contain link): %v", err)
+			return ""
+		}
+
+		return string(bod)
+	}()
+
+	fmt.Println("initialized")
 }
 
 func main() {
